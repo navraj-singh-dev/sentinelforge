@@ -8,9 +8,11 @@ This directory contains the target service used to simulate production incidents
 * `incident_payloads/alert_timeout_spike.json`: Sample P1 alert payload sent to the TrueForge agent.
 
 ## Prerequisites & Installation
-Install the Python test dependencies from the repository root:
+* **Python Requirement:** Python 3.10 or newer (required for `@dataclass(slots=True)` support).
+
+Install the Python dependencies from the repository root using the target Python interpreter:
 ```bash
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 ## How to Reproduce the Incident
