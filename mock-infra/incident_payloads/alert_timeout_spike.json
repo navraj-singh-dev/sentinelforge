@@ -1,0 +1,18 @@
+{
+  "incident_id": "INC-84920",
+  "service": "checkout-payment-api",
+  "severity": "P1-CRITICAL",
+  "timestamp": "2026-08-25T14:32:00Z",
+  "title": "High 504 Gateway Timeout Spike in /api/v1/checkout",
+  "metrics": {
+    "error_rate_percentage": 68.4,
+    "p99_latency_ms": 2850,
+    "active_connection_pool_saturation": 94.2
+  },
+  "summary": "Grafana alert triggered: payment checkout success rate dropped below 40% immediately following recent deployment 4c21. Transactions taking >2.0s are timing out.",
+  "target_repository": "https://github.com/your-org/sentinelforge",
+  "affected_endpoints": [
+    "/api/v1/checkout",
+    "/api/v1/payment/process"
+  ]
+}
