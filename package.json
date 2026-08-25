@@ -1,0 +1,27 @@
+{
+  "name": "sentinelforge",
+  "version": "1.0.0",
+  "description": "Autonomous SRE triage and remediation agent built on the TrueForge agent harness",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "build": "npm run build:mcp",
+    "build:mcp": "cd mcp-servers/telemetry-mcp && npm run build",
+    "test:infra": "pytest mock-infra/src/test_payment.py",
+    "harness:start": "npx @truefoundry/trueforge@latest"
+  },
+  "keywords": [
+    "trueforge",
+    "agent-harness",
+    "mcp",
+    "sre",
+    "incident-response",
+    "qodo",
+    "daytona"
+  ],
+  "author": "SentinelForge Contributors",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}
