@@ -7,8 +7,14 @@ This directory contains the target service used to simulate production incidents
 * `src/test_payment.py`: Pytest suite testing checkout flows and database latency resilience.
 * `incident_payloads/alert_timeout_spike.json`: Sample P1 alert payload sent to the TrueForge agent.
 
+## Prerequisites & Installation
+Install the Python test dependencies from the repository root:
+```bash
+pip install -r requirements.txt
+```
+
 ## How to Reproduce the Incident
-Run pytest inside `mock-infra/src`:
+From the repository root, execute pytest:
 ```bash
 python -m pytest mock-infra/src/test_payment.py
 ```

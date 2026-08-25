@@ -57,8 +57,8 @@ class DatabaseConnectionPool:
         start_time = time.monotonic()
         
         if estimated_latency_seconds > self.timeout_seconds:
-            # Simulate wait up to timeout threshold before throwing
-            elapsed = self.timeout_seconds
+            # Simulate wait up to timeout threshold before throwing (scaled for fast test execution)
+            time.sleep(min(self.timeout_seconds * 0.05, 0.1))
             logger.error(
                 "Database lock timeout: query execution (%0.2fs) exceeded pool limit (%0.2fs)",
                 estimated_latency_seconds,
@@ -69,7 +69,7 @@ class DatabaseConnectionPool:
             )
 
         # Successful simulated execution
-        time.sleep(min(estimated_latency_seconds, 0.05))  # Sleep tiny fraction for realistic execution
+        time.sleep(min(estimated_latency_seconds * 0.05, 0.05))  # Scaled sleep for realistic execution
         elapsed = time.monotonic() - start_time
         return {"status": "committed", "rows_affected": 1, "latency_seconds": elapsed}
 
