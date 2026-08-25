@@ -1,0 +1,14 @@
+[project]
+name = "sentinelforge"
+version = "1.0.0"
+description = "Autonomous SRE Incident Response and Remediation Agent on TrueForge"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0"
+]
+
+[tool.pytest.ini_options]
+testpaths = ["mock-infra/src"]
+python_files = ["test_*.py"]
