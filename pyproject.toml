@@ -10,5 +10,9 @@ dependencies = [
 ]
 
 [tool.pytest.ini_options]
+pythonpath = ["mock-infra/src"]
 testpaths = ["mock-infra/src"]
 python_files = ["test_*.py"]
+
+[tool.pyright]
+extraPaths = ["mock-infra/src"]
