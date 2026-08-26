@@ -1,42 +1,93 @@
 #!/usr/bin/env node
 
 /**
- * SentinelForge Telemetry MCP Server
- * Exposes tools for operational incident alerting, telemetry timeseries metrics, and high-volume log streams.
- * Compatible with TrueForge MCP runtime and Claude / Antigravity MCP tooling.
+ * SentinelForge: Telemetry MCP Server
+ * Exposes Model Context Protocol (MCP) tools for incident triage, log inspection, and metric evaluation.
+ * Decouples transport protocol from domain data via the ITelemetryProvider abstraction.
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-// Initialize standard MCP Server instance
-const server = new McpServer({
-  name: "telemetry-mcp",
-  version: "1.0.0",
-});
+// ============================================================================
+// Domain Interfaces & Types
+// ============================================================================
+
+export interface ActiveAlert {
+  incident_id: string;
+  service: string;
+  severity: "P1-CRITICAL" | "P2-HIGH" | "P3-MEDIUM" | "P4-LOW";
+  status: "ACTIVE" | "ACKNOWLEDGED" | "RESOLVED";
+  triggered_at: string;
+  title: string;
+  summary: string;
+  metrics: {
+    error_rate_percentage: number;
+    p99_latency_ms: number;
+    p50_latency_ms: number;
+    active_connection_pool_saturation: number;
+  };
+  deployment_context: {
+    recent_commit_hash: string;
+    author: string;
+    deployed_at: string;
+    branch: string;
+  };
+  affected_endpoints: string[];
+}
+
+export interface StructuredLogEntry {
+  timestamp: string;
+  level: "INFO" | "WARN" | "ERROR";
+  trace_id: string;
+  service: string;
+  endpoint: string;
+  status_code: number;
+  duration_ms: number;
+  message: string;
+  stack_trace?: string;
+}
+
+export interface MetricDataPoint {
+  timestamp: string;
+  value: number;
+  unit: string;
+}
 
 /**
- * Tool 1: get_active_alerts
- * Retrieves active production incidents and alert thresholds.
+ * Provider interface decoupling telemetry acquisition from the MCP transport layer.
  */
-server.tool(
-  "get_active_alerts",
-  "Fetches currently active P1/P2/P3 production alerts across registered microservices.",
-  {
-    service_name: z
-      .string()
-      .optional()
-      .describe("Optional service name filter (e.g., 'checkout-payment-api')"),
-  },
-  async ({ service_name }) => {
-    const alerts = [
+export interface ITelemetryProvider {
+  getActiveAlerts(serviceName?: string): Promise<ActiveAlert[]>;
+  getServiceLogs(
+    serviceName: string,
+    windowMinutes: number,
+    logLevel: "ALL" | "INFO" | "WARN" | "ERROR"
+  ): Promise<StructuredLogEntry[]>;
+  getMetricTimeseries(
+    metricName: "error_rate" | "latency_p99" | "db_connection_saturation",
+    windowMinutes: number
+  ): Promise<MetricDataPoint[]>;
+}
+
+// ============================================================================
+// Mock Telemetry Provider Implementation (Incident Reproduction Adapter)
+// ============================================================================
+
+export class MockIncidentTelemetryProvider implements ITelemetryProvider {
+  private readonly incidentDeploymentOffsetMs = 25 * 60 * 1000; // Deployed 25 mins ago
+  private readonly incidentTriggerOffsetMs = 18 * 60 * 1000; // Alert triggered 18 mins ago
+
+  async getActiveAlerts(serviceName?: string): Promise<ActiveAlert[]> {
+    const now = Date.now();
+    const alerts: ActiveAlert[] = [
       {
         incident_id: "INC-84920",
         service: "checkout-payment-api",
         severity: "P1-CRITICAL",
         status: "ACTIVE",
-        triggered_at: new Date(Date.now() - 18 * 60 * 1000).toISOString(),
+        triggered_at: new Date(now - this.incidentTriggerOffsetMs).toISOString(),
         title: "High 504 Gateway Timeout Rate on /api/v1/checkout",
         summary:
           "Payment checkout success rate dropped to 31.6% following deployment 4c21. Transactions with database queries taking >2.0s are aborting with connection pool timeout.",
@@ -49,83 +100,47 @@ server.tool(
         deployment_context: {
           recent_commit_hash: "4c21",
           author: "developer@sentinelforge.local",
-          deployed_at: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
+          deployed_at: new Date(now - this.incidentDeploymentOffsetMs).toISOString(),
           branch: "main",
         },
         affected_endpoints: ["/api/v1/checkout", "/api/v1/payment/process"],
       },
     ];
 
-    const filtered = service_name
-      ? alerts.filter((a) => a.service.toLowerCase() === service_name.toLowerCase())
-      : alerts;
-
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(
-            {
-              total_active_alerts: filtered.length,
-              timestamp: new Date().toISOString(),
-              alerts: filtered,
-            },
-            null,
-            2
-          ),
-        },
-      ],
-    };
+    if (!serviceName) {
+      return alerts;
+    }
+    return alerts.filter((a) => a.service.toLowerCase() === serviceName.toLowerCase());
   }
-);
 
-/**
- * Tool 2: fetch_service_logs
- * Streams structured JSON logs for a given service.
- * Emits high-volume output (>10KB) demonstrating TrueForge's Large Result Offloading into the sandbox.
- */
-server.tool(
-  "fetch_service_logs",
-  "Fetches detailed application and error logs for a specific service over a time window.",
-  {
-    service_name: z.string().describe("Target service name (e.g. 'checkout-payment-api')"),
-    window_minutes: z
-      .number()
-      .default(15)
-      .describe("Time window in minutes to inspect (default: 15)"),
-    log_level: z
-      .enum(["ALL", "ERROR", "WARN", "INFO"])
-      .default("ALL")
-      .describe("Log level filter (default: ALL)"),
-  },
-  async ({ service_name, window_minutes, log_level }) => {
-    const logs: Array<{
-      timestamp: string;
-      level: string;
-      trace_id: string;
-      service: string;
-      endpoint: string;
-      status_code: number;
-      duration_ms: number;
-      message: string;
-      stack_trace?: string;
-    }> = [];
-
+  async getServiceLogs(
+    serviceName: string,
+    windowMinutes: number,
+    logLevel: "ALL" | "INFO" | "WARN" | "ERROR"
+  ): Promise<StructuredLogEntry[]> {
     const now = Date.now();
-    const startTime = now - window_minutes * 60 * 1000;
+    const startTimeMs = now - windowMinutes * 60 * 1000;
+    const deployTimestampMs = now - this.incidentDeploymentOffsetMs;
+    const totalLogCount = 60;
+    const intervalMs = (windowMinutes * 60 * 1000) / totalLogCount;
 
-    // Generate 60 realistic high-fidelity log entries
-    for (let i = 0; i < 60; i++) {
-      const entryTime = new Date(startTime + i * 15 * 1000).toISOString();
+    const logs: StructuredLogEntry[] = [];
+
+    for (let i = 0; i < totalLogCount; i++) {
+      const entryTimeMs = startTimeMs + i * intervalMs;
+      const entryIso = new Date(entryTimeMs).toISOString();
       const traceId = `trc_${Math.random().toString(36).substring(2, 11)}`;
-      const isError = i % 2 === 0; // High failure rate (50%) matching the 68% error spike
+      const isPostDeployment = entryTimeMs >= deployTimestampMs;
+
+      // Failures occur only post-deployment on alternate requests
+      const isError = isPostDeployment && i % 2 === 0;
 
       if (isError) {
         logs.push({
-          timestamp: entryTime,
+          timestamp: entryIso,
           level: "ERROR",
           trace_id: traceId,
-          service: service_name,
+          service: serviceName,
           endpoint: "/api/v1/checkout",
           status_code: 504,
           duration_ms: 2000 + Math.floor(Math.random() * 850),
@@ -140,115 +155,215 @@ TimeoutError: Database query exceeded configured timeout of 2.0s`,
         });
       } else {
         logs.push({
-          timestamp: entryTime,
+          timestamp: entryIso,
           level: "INFO",
           trace_id: traceId,
-          service: service_name,
+          service: serviceName,
           endpoint: "/api/v1/checkout",
           status_code: 200,
           duration_ms: 120 + Math.floor(Math.random() * 80),
-          message: "Payment transaction committed successfully: tx_" + traceId,
+          message: `Payment transaction committed successfully: tx_${traceId}`,
         });
       }
     }
 
-    const filteredLogs =
-      log_level === "ALL" ? logs : logs.filter((l) => l.level === log_level);
-
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(
-            {
-              service: service_name,
-              window_minutes,
-              total_records: filteredLogs.length,
-              retrieved_at: new Date().toISOString(),
-              logs: filteredLogs,
-            },
-            null,
-            2
-          ),
-        },
-      ],
-    };
+    if (logLevel === "ALL") {
+      return logs;
+    }
+    return logs.filter((l) => l.level === logLevel);
   }
-);
 
-/**
- * Tool 3: get_metric_timeseries
- * Returns timeseries metric points for telemetry dashboards and anomaly detection.
- */
-server.tool(
-  "get_metric_timeseries",
-  "Fetches metric timeseries datapoints (error rate %, P99 latency ms, active connections).",
-  {
-    metric_name: z
-      .enum(["error_rate", "latency_p99", "db_connection_saturation"])
-      .describe("Name of the metric timeseries to query"),
-    window_minutes: z
-      .number()
-      .default(30)
-      .describe("Lookback window in minutes (default: 30)"),
-  },
-  async ({ metric_name, window_minutes }) => {
-    const points: Array<{ timestamp: string; value: number; unit: string }> = [];
+  async getMetricTimeseries(
+    metricName: "error_rate" | "latency_p99" | "db_connection_saturation",
+    windowMinutes: number
+  ): Promise<MetricDataPoint[]> {
     const now = Date.now();
-    const intervalMs = (window_minutes * 60 * 1000) / 10;
+    const startTimeMs = now - windowMinutes * 60 * 1000;
+    const deployTimestampMs = now - this.incidentDeploymentOffsetMs;
+    const totalPoints = 12;
+    const intervalMs = (windowMinutes * 60 * 1000) / (totalPoints - 1);
 
-    for (let i = 10; i >= 0; i--) {
-      const pointTime = new Date(now - i * intervalMs).toISOString();
-      const isAfterDeploy = i <= 6; // Deployment occurred 18 mins ago (points 0..6 are in degraded state)
+    const points: MetricDataPoint[] = [];
 
-      let val = 0;
+    for (let i = 0; i < totalPoints; i++) {
+      const pointTimeMs = startTimeMs + i * intervalMs;
+      const pointIso = new Date(pointTimeMs).toISOString();
+      const isPostDeployment = pointTimeMs >= deployTimestampMs;
+
+      let value = 0;
       let unit = "";
 
-      if (metric_name === "error_rate") {
+      if (metricName === "error_rate") {
         unit = "percentage";
-        val = isAfterDeploy ? 68.4 + (Math.random() * 4 - 2) : 0.2 + (Math.random() * 0.1);
-      } else if (metric_name === "latency_p99") {
+        value = isPostDeployment ? 68.4 + (Math.random() * 3 - 1.5) : 0.2 + Math.random() * 0.1;
+      } else if (metricName === "latency_p99") {
         unit = "milliseconds";
-        val = isAfterDeploy ? 2850 + (Math.random() * 200 - 100) : 340 + (Math.random() * 30);
+        value = isPostDeployment ? 2850 + (Math.random() * 150 - 75) : 340 + Math.random() * 30;
       } else {
         unit = "percentage";
-        val = isAfterDeploy ? 94.2 + (Math.random() * 3 - 1.5) : 22.0 + (Math.random() * 5);
+        value = isPostDeployment ? 94.2 + (Math.random() * 2 - 1) : 22.0 + Math.random() * 4;
       }
 
       points.push({
-        timestamp: pointTime,
-        value: Number(val.toFixed(2)),
+        timestamp: pointIso,
+        value: Number(value.toFixed(2)),
         unit,
       });
     }
 
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(
-            {
-              metric: metric_name,
-              window_minutes,
-              datapoints_count: points.length,
-              points,
-            },
-            null,
-            2
-          ),
-        },
-      ],
-    };
+    return points;
   }
-);
+}
 
-// Start the stdio transport server
+// ============================================================================
+// MCP Server Initialization & Tool Bindings
+// ============================================================================
+
+export function createTelemetryMcpServer(
+  provider: ITelemetryProvider = new MockIncidentTelemetryProvider()
+): McpServer {
+  const server = new McpServer({
+    name: "telemetry-mcp",
+    version: "1.0.0",
+  });
+
+  /**
+   * Tool 1: get_active_alerts
+   */
+  server.tool(
+    "get_active_alerts",
+    "Fetches currently active P1/P2 operational alerts across registered microservices via the telemetry provider.",
+    {
+      service_name: z
+        .string()
+        .min(1)
+        .optional()
+        .describe("Optional service name filter (e.g. 'checkout-payment-api')"),
+    },
+    async ({ service_name }) => {
+      const alerts = await provider.getActiveAlerts(service_name);
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(
+              {
+                total_active_alerts: alerts.length,
+                retrieved_at: new Date().toISOString(),
+                alerts,
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    }
+  );
+
+  /**
+   * Tool 2: fetch_service_logs
+   */
+  server.tool(
+    "fetch_service_logs",
+    "Streams high-volume structured application and error logs (>10KB) for a specific service across a strictly bounded lookback window.",
+    {
+      service_name: z
+        .string()
+        .min(1)
+        .describe("Target service name (e.g. 'checkout-payment-api')"),
+      window_minutes: z
+        .number()
+        .int()
+        .positive()
+        .min(1)
+        .max(1440)
+        .default(15)
+        .describe("Time lookback window in minutes (1 to 1440, default: 15)"),
+      log_level: z
+        .enum(["ALL", "ERROR", "WARN", "INFO"])
+        .default("ALL")
+        .describe("Log level filter (default: ALL)"),
+    },
+    async ({ service_name, window_minutes, log_level }) => {
+      const logs = await provider.getServiceLogs(service_name, window_minutes, log_level);
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(
+              {
+                service: service_name,
+                window_minutes,
+                total_records: logs.length,
+                retrieved_at: new Date().toISOString(),
+                logs,
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    }
+  );
+
+  /**
+   * Tool 3: get_metric_timeseries
+   */
+  server.tool(
+    "get_metric_timeseries",
+    "Retrieves time-series metric datapoints across a strictly bounded lookback window with absolute event alignment.",
+    {
+      metric_name: z
+        .enum(["error_rate", "latency_p99", "db_connection_saturation"])
+        .describe("Name of the metric timeseries to query"),
+      window_minutes: z
+        .number()
+        .int()
+        .positive()
+        .min(1)
+        .max(1440)
+        .default(30)
+        .describe("Lookback window in minutes (1 to 1440, default: 30)"),
+    },
+    async ({ metric_name, window_minutes }) => {
+      const points = await provider.getMetricTimeseries(metric_name, window_minutes);
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(
+              {
+                metric: metric_name,
+                window_minutes,
+                datapoints_count: points.length,
+                retrieved_at: new Date().toISOString(),
+                points,
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    }
+  );
+
+  return server;
+}
+
+// Start stdio transport when executed as the main script
 async function main() {
+  const server = createTelemetryMcpServer();
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }
 
-main().catch((error) => {
-  console.error("Fatal error starting Telemetry MCP Server:", error);
-  process.exit(1);
-});
+// Invoke main entrypoint if executed directly
+if (import.meta.url === `file://${process.argv[1]?.replace(/\\/g, "/")}` || process.env.NODE_ENV !== "test") {
+  main().catch((error) => {
+    console.error("Fatal error starting Telemetry MCP Server:", error);
+    process.exit(1);
+  });
+}

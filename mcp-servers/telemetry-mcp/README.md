@@ -1,14 +1,20 @@
 # SentinelForge: Telemetry MCP Server
 
-A Model Context Protocol (MCP) server providing real-time operational incident alerting, telemetry metric queries, and high-volume application log streams.
+A Model Context Protocol (MCP) server providing operational incident alerting, telemetry metrics, and high-volume application log streams to TrueForge autonomous SRE agents.
+
+## Architecture & Provider Abstraction
+The telemetry server cleanly decouples transport serialization from data acquisition via the `ITelemetryProvider` interface.
+
+* **`MockIncidentTelemetryProvider` (Default / Demo Mode):** An incident reproduction adapter that emits realistic P1 checkout timeout incidents, 504 log traces, and error rate spikes aligned with the git regression in `mock-infra`.
+* **Extensibility:** Easily swappable with production telemetry backends (Datadog, Prometheus, CloudWatch, OpenTelemetry) by implementing `ITelemetryProvider`.
 
 ## Tools Exposed
 
-| Tool Name | Parameters | Description |
-|---|---|---|
-| `get_active_alerts` | `service_name` (optional) | Retrieves active P1/P2 operational alerts and deployment metadata. |
-| `fetch_service_logs` | `service_name`, `window_minutes`, `log_level` | Streams structured JSON logs and stack traces (>10KB payload). |
-| `get_metric_timeseries` | `metric_name`, `window_minutes` | Retrieves time-series metric points (error rates, P99 latencies). |
+| Tool Name | Parameters | Constraints | Description |
+|---|---|---|---|
+| `get_active_alerts` | `service_name` (optional) | `min(1)` | Retrieves active P1/P2 operational alerts and deployment metadata. |
+| `fetch_service_logs` | `service_name`, `window_minutes`, `log_level` | `window_minutes: [1..1440]` | Streams structured JSON logs and stack traces (>10KB payload). |
+| `get_metric_timeseries` | `metric_name`, `window_minutes` | `window_minutes: [1..1440]` | Retrieves time-series metric points (error rates, P99 latencies). |
 
 ## Installation & Build
 From the repository root, install dependencies and compile the TypeScript source:
@@ -19,11 +25,11 @@ npm install
 npm run build
 ```
 
-## Running the Server
-The server communicates over standard I/O (`stdio`):
+## Running Verification Tests
+Execute the end-to-end integration assertions against the compiled server:
 
 ```bash
-node dist/index.js
+npm test
 ```
 
 ## TrueForge Integration
