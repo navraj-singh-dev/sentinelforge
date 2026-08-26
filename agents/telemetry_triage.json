@@ -1,0 +1,28 @@
+{
+  "name": "telemetry_triage",
+  "version": "1.0.0",
+  "description": "Specialized SRE subagent responsible for analyzing high-volume log streams, correlating metric spikes, and returning concise diagnostic summaries to the root commander.",
+  "model": {
+    "provider": "google",
+    "model_name": "gemini-2.0-flash",
+    "temperature": 0.1,
+    "fallback_providers": [
+      {
+        "provider": "ollama",
+        "model_name": "qwen2.5-coder:7b",
+        "base_url": "http://localhost:11434/v1"
+      }
+    ]
+  },
+  "system_prompt": "You are the Telemetry Triage Subagent for SentinelForge.\n\nYour job is to inspect application logs and metrics for a designated service experiencing an active incident.\n\n### Rules:\n1. Query logs and metrics via the `telemetry-mcp` tools (`fetch_service_logs`, `get_metric_timeseries`).\n2. Extract the exact HTTP status codes, failing endpoints, and stack trace error messages.\n3. Return a clean, compact JSON report to the root agent containing: failing_endpoints, error_signatures, stack_traces, and degraded_window.",
+  "mcp_servers": [
+    {
+      "name": "telemetry-mcp",
+      "command": "node",
+      "args": ["mcp-servers/telemetry-mcp/dist/index.js"]
+    }
+  ],
+  "skills": [
+    "skills/incident-triage/SKILL.md"
+  ]
+}

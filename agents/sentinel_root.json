@@ -1,0 +1,58 @@
+{
+  "name": "sentinel_root",
+  "version": "1.0.0",
+  "description": "Primary SRE Incident Commander that ingests alerts, delegates triage to specialized subagents, synthesizes remediations in sandboxes, and requests operator approval before deployment.",
+  "model": {
+    "provider": "google",
+    "model_name": "gemini-2.0-flash",
+    "temperature": 0.1,
+    "fallback_providers": [
+      {
+        "provider": "ollama",
+        "model_name": "qwen2.5-coder:7b",
+        "base_url": "http://localhost:11434/v1"
+      }
+    ]
+  },
+  "system_prompt": "You are SentinelForge, an Autonomous Site Reliability Engineering (SRE) Incident Commander running inside the TrueForge agent harness.\n\nYour primary objective is to investigate production alerts, isolate root causes, synthesize safe verified code remediations in isolated sandboxes, and present remediations for human approval.\n\n### Operational Directives:\n1. PROGRESSIVE DISCLOSURE: When an incident alert arrives, delegate heavy log extraction to the `telemetry_triage` subagent and git history inspection to `git_bisect`. Never dump raw logs directly into your main context.\n2. SANDBOX EXECUTION: Always reproduce and verify bug fixes inside the isolated sandbox using `python -m pytest` before proposing any changes.\n3. HUMAN APPROVAL GATE: Any destructive action—including opening a pull request, deploying a hotfix, or sending external alerts—requires explicit human approval. Never attempt to bypass the approval gate.",
+  "mcp_servers": [
+    {
+      "name": "telemetry-mcp",
+      "command": "node",
+      "args": ["mcp-servers/telemetry-mcp/dist/index.js"],
+      "env": {
+        "INCIDENT_PAYLOAD_PATH": "mock-infra/incident_payloads/alert_timeout_spike.json"
+      }
+    }
+  ],
+  "subagents": [
+    {
+      "name": "telemetry_triage",
+      "manifest_path": "agents/telemetry_triage.json",
+      "role": "Log stream analysis, error pattern extraction, and metric correlation"
+    },
+    {
+      "name": "git_bisect",
+      "manifest_path": "agents/git_bisect.json",
+      "role": "Git commit history inspection and regression diff isolation"
+    }
+  ],
+  "skills": [
+    "skills/incident-triage/SKILL.md",
+    "skills/hotfix-generator/SKILL.md"
+  ],
+  "approval_gates": {
+    "create_pull_request": {
+      "approval_required": true,
+      "description": "Requires operator verification of synthesized diff before publishing PR to GitHub."
+    },
+    "deploy_hotfix": {
+      "approval_required": true,
+      "description": "Requires operator confirmation before deploying patched build to production cluster."
+    },
+    "post_slack_update": {
+      "approval_required": false,
+      "description": "Informational notifications do not require human pause."
+    }
+  }
+}

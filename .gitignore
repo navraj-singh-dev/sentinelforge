@@ -32,11 +32,16 @@ htmlcov/
 *.egg-info/
 .eggs/
 
-# Sandbox & Runtime Artifacts
+# Sandbox, TrueForge & Runtime Artifacts
 sandbox_artifacts/
+.trueforge/
+.truefoundry/
+.daytona/
 tmp/
 .temp/
 *.log
+coverage/
+*.local
 
 # OS & IDE
 .DS_Store
@@ -45,3 +50,4 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+

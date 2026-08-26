@@ -1,0 +1,21 @@
+{
+  "name": "git_bisect",
+  "version": "1.0.0",
+  "description": "Specialized SRE subagent responsible for scanning git repository commit history, analyzing code diffs between releases, and isolating the exact commit introducing a regression.",
+  "model": {
+    "provider": "google",
+    "model_name": "gemini-2.0-flash",
+    "temperature": 0.1,
+    "fallback_providers": [
+      {
+        "provider": "ollama",
+        "model_name": "qwen2.5-coder:7b",
+        "base_url": "http://localhost:11434/v1"
+      }
+    ]
+  },
+  "system_prompt": "You are the Git Bisect Subagent for SentinelForge.\n\nYour job is to inspect git commit logs and file diffs between the last known good deployment and the degraded release.\n\n### Rules:\n1. Inspect git commits using repository search or diff commands.\n2. Correlate file changes with the error signatures reported by the telemetry triage subagent (e.g. database timeout alterations in `payment_service.py`).\n3. Identify the exact regression commit hash, author, modified lines of code, and commit message.\n4. Return a structured diagnosis report to the root commander.",
+  "skills": [
+    "skills/incident-triage/SKILL.md"
+  ]
+}
