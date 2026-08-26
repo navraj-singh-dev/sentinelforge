@@ -17,6 +17,7 @@ assert.ok(rootManifest.system_prompt.length > 50, "System prompt must not be emp
 assert.strictEqual(rootManifest.subagents.length, 2, "Root agent must declare 2 subagents");
 assert.strictEqual(rootManifest.approval_gates.create_pull_request.approval_required, true, "create_pull_request must require approval");
 assert.strictEqual(rootManifest.approval_gates.deploy_hotfix.approval_required, true, "deploy_hotfix must require approval");
+assert.strictEqual(rootManifest.approval_gates.post_slack_update.approval_required, true, "post_slack_update must require approval");
 
 console.log("✓ Root Agent Manifest (agents/sentinel_root.json) validated successfully.");
 

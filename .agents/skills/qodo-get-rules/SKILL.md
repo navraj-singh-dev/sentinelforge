@@ -133,9 +133,9 @@ Check that the required Qodo configuration is present. The default location is `
 
 Example config parsing:
 ```bash
-API_KEY=$(python3 -c "import json,os; c=json.load(open(os.path.expanduser('~/.qodo/config.json'))); print(c['API_KEY'])")
-ENV_NAME=$(python3 -c "import json,os; c=json.load(open(os.path.expanduser('~/.qodo/config.json'))); print(c.get('ENVIRONMENT_NAME',''))")
-QODO_API_URL=$(python3 -c "import json,os; c=json.load(open(os.path.expanduser('~/.qodo/config.json'))); print(c.get('QODO_API_URL',''))")
+API_KEY="${QODO_API_KEY:-$(python3 -c "import json,os; p=os.path.expanduser('~/.qodo/config.json'); print(json.load(open(p))['API_KEY'] if os.path.exists(p) else '')")}"
+ENV_NAME="${QODO_ENVIRONMENT_NAME:-$(python3 -c "import json,os; p=os.path.expanduser('~/.qodo/config.json'); print(json.load(open(p)).get('ENVIRONMENT_NAME','') if os.path.exists(p) else '')")}"
+QODO_API_URL="${QODO_API_URL:-$(python3 -c "import json,os; p=os.path.expanduser('~/.qodo/config.json'); print(json.load(open(p)).get('QODO_API_URL','') if os.path.exists(p) else '')")}"
 REQUEST_ID=$(uuidgen || python3 -c "import uuid; print(uuid.uuid4())")
 # Determine API_URL: QODO_API_URL takes precedence over ENVIRONMENT_NAME
 if [ -n "$QODO_API_URL" ]; then

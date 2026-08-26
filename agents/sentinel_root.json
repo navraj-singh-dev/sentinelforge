@@ -51,8 +51,8 @@
       "description": "Requires operator confirmation before deploying patched build to production cluster."
     },
     "post_slack_update": {
-      "approval_required": false,
-      "description": "Informational notifications do not require human pause."
+      "approval_required": true,
+      "description": "Requires operator approval before broadcasting external incident notifications to Slack."
     }
   }
 }

@@ -197,11 +197,17 @@ Multiple replies across files can be combined in a single request:
 Uses the same unified endpoint with the `message` field:
 
 ```bash
+PAYLOAD=$(python3 -c "
+import json, os
+summary = os.environ.get('SUMMARY_BODY', '')
+print(json.dumps({'message': summary}))
+")
+
 curl -s -u "$GERRIT_USERNAME:$GERRIT_HTTP_PASSWORD" \
   -H "Content-Type: application/json" \
   -X POST \
   "$GERRIT_URL/a/changes/<change-id>/revisions/current/review" \
-  -d '{"message": "<summary-comment-body>"}' | tail -c +6
+  -d "$PAYLOAD" | tail -c +6
 ```
 
 **Optimization:** Summary and all inline replies can be batched in a single request:

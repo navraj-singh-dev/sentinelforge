@@ -93,7 +93,7 @@ Match against:
   ADO_REMOTE=$(git remote get-url origin)
   ADO_ORG=$(echo "$ADO_REMOTE" | sed -E 's|https://[^@]*@?dev\.azure\.com/([^/]+)/.*|\1|')
   ADO_PROJECT=$(echo "$ADO_REMOTE" | sed -E 's|https://[^/]*/[^/]+/([^/]+)/.*|\1|')
-  ADO_REPO=$(echo "$ADO_REMOTE" | sed -E 's|.*/([^/]+)$|\1|')
+  ADO_REPO=$(echo "$ADO_REMOTE" | sed -E 's|.*/([^/]+?)(\.git)?$|\1|')
   az devops configure --defaults organization=https://dev.azure.com/$ADO_ORG project=$ADO_PROJECT
   # Get repository ID (required for thread API calls):
   ADO_REPO_ID=$(az repos show --name $ADO_REPO --query id -o tsv)
@@ -124,7 +124,7 @@ glab mr list --source-branch <branch-name>
 ```bash
 BRANCH=$(git branch --show-current)
 curl -s -u "$BB_USERNAME:$BB_APP_PASSWORD" \
-  "https://api.bitbucket.org/2.0/repositories/$BB_WORKSPACE/$BB_REPO/pullrequests?state=OPEN" \
+  "${BB_URL:-https://api.bitbucket.org}/2.0/repositories/$BB_WORKSPACE/$BB_REPO/pullrequests?state=OPEN" \
   | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
@@ -158,8 +158,8 @@ gh api repos/{owner}/{repo}/pulls/<pr-number>/comments
 ### GitLab
 
 ```bash
-# All MR notes including inline comments
-glab mr view <mr-iid> --comments
+# All MR notes including structured discussions and inline IDs
+glab mr note list -F json <mr-iid>
 ```
 
 ### Bitbucket
@@ -167,7 +167,7 @@ glab mr view <mr-iid> --comments
 ```bash
 # All PR comments including inline comments
 curl -s -u "$BB_USERNAME:$BB_APP_PASSWORD" \
-  "https://api.bitbucket.org/2.0/repositories/$BB_WORKSPACE/$BB_REPO/pullrequests/<pr-id>/comments"
+  "${BB_URL:-https://api.bitbucket.org}/2.0/repositories/$BB_WORKSPACE/$BB_REPO/pullrequests/<pr-id>/comments"
 ```
 
 ### Azure DevOps
@@ -214,7 +214,7 @@ glab api "/projects/:id/merge_requests/<mr-iid>/discussions/<discussion-id>/note
 curl -s -u "$BB_USERNAME:$BB_APP_PASSWORD" \
   -H "Content-Type: application/json" \
   -X POST \
-  "https://api.bitbucket.org/2.0/repositories/$BB_WORKSPACE/$BB_REPO/pullrequests/<pr-id>/comments" \
+  "${BB_URL:-https://api.bitbucket.org}/2.0/repositories/$BB_WORKSPACE/$BB_REPO/pullrequests/<pr-id>/comments" \
   -d '{"content": {"raw": "<reply-body>"}, "parent": {"id": <inline-comment-id>}}'
 ```
 

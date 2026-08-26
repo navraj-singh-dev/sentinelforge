@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "npm run build:mcp",
+    "build:mcp": "cd mcp-servers/telemetry-mcp && npm run build",
     "test:infra": "pytest mock-infra/src/test_payment.py",
     "test:specs": "node scripts/verify_agent_specs.js",
     "test": "node scripts/verify_agent_specs.js",
