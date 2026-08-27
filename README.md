@@ -89,7 +89,7 @@ sentinelforge/
 ## Quickstart & Setup
 
 ### Prerequisites
-* **Node.js:** `>= 20.0.0`
+* **Node.js:** `>= 22.14.0`
 * **Python:** `>= 3.10`
 * **Git:** Installed and configured
 
