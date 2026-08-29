@@ -10,6 +10,7 @@
     "test:infra": "pytest mock-infra/src/test_payment.py",
     "test:specs": "node scripts/verify_agent_specs.js",
     "test": "node scripts/verify_agent_specs.js",
+    "start:mcp:sse": "cd mcp-servers/telemetry-mcp && npm run start:sse",
     "harness:start": "npx @truefoundry/trueforge@latest"
   },
   "keywords": [
