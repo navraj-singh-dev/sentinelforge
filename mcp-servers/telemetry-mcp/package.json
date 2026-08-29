@@ -11,7 +11,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "start:sse": "node dist/sse-server.js",
-    "test": "node dist/test-client.js && node dist/test-edge-cases.js",
+    "test": "node dist/test-client.js && node dist/test-edge-cases.js && node dist/test-sse.js",
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
