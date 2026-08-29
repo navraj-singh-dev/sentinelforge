@@ -519,10 +519,12 @@ async function main() {
   await server.connect(transport);
 }
 
-if (
-  import.meta.url === `file://${process.argv[1]?.replace(/\\/g, "/")}` ||
-  process.env.NODE_ENV !== "test"
-) {
+const isDirectExecution =
+  Boolean(process.argv[1]) &&
+  (import.meta.url === `file://${process.argv[1]?.replace(/\\/g, "/")}` ||
+    import.meta.url === `file:///${process.argv[1]?.replace(/\\/g, "/")}`);
+
+if (isDirectExecution) {
   main().catch((error) => {
     console.error("Fatal error starting Telemetry MCP Server:", error);
     process.exit(1);
