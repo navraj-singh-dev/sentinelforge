@@ -122,8 +122,12 @@ npm run test:infra
 cd mcp-servers/telemetry-mcp && npm test && cd ../..
 ```
 
-### 4. Launch TrueForge Agent Harness
+### 4. Launch MCP Server & TrueForge Agent Harness
 ```bash
+# Terminal 1: Start Telemetry MCP Server (SSE transport on port 8080)
+npm run start:mcp:sse
+
+# Terminal 2: Start TrueForge Agent Harness
 npm run harness:start
 ```
 The TrueForge dashboard will open at `http://localhost:8790`.
@@ -142,6 +146,8 @@ Every feature branch and modification in this repository was reviewed by **Qodo*
 | **[#2](https://github.com/navraj-singh-dev/sentinelforge/pull/2)** | `feat/telemetry-mcp` | Telemetry MCP Server (Alerts, Logs & Metrics) | 1. Fabricated telemetry mixed with transport<br>2. Fixed 15s log window spacing overflow<br>3. Unbounded lookback schema<br>4. Negative window metric math inversion<br>5. Hardcoded deployment boundary index<br>6. Missing test assertions in test script | Fixed in [`e6cd333`](https://github.com/navraj-singh-dev/sentinelforge/commit/e6cd333) and [`64d40d9`](https://github.com/navraj-singh-dev/sentinelforge/commit/64d40d9). Decoupled `ITelemetryProvider`, added proportional window scaling, added strict Zod bounds `[1..1440]`, aligned degradation to absolute epoch timestamps, and wrote `test-client.ts` and `test-edge-cases.ts` with strict assertions. | `✓ Resolved`<br>(Merged to `main`) |
 | **[#3](https://github.com/navraj-singh-dev/sentinelforge/pull/3)** | `feat/agent-specs-and-skills` | TrueForge Agent Specs, Custom Skills & Approval Gates | 1. Root `build` script calling missing `build:mcp`<br>2. Approval policy contradiction on `post_slack_update`<br>3. Multiline search query newlines in curl template<br>4. GitLab plain text comments missing discussion IDs<br>5. Bitbucket hardcoded API URL ignoring `BB_URL`<br>6. Gerrit raw markdown in JSON string<br>7. Azure repo regex retaining `.git` suffix<br>8. Environment variable precedence in script template | Fixed in [`b791d89`](https://github.com/navraj-singh-dev/sentinelforge/commit/b791d89). Restored `build:mcp`, enforced `approval_required: true` on `post_slack_update`, updated `verify_agent_specs.js` test suite, safely serialized JSON across skill templates, updated GitLab JSON note commands, enabled `${BB_URL}` support, and fixed Azure regex stripping. | `✓ Resolved`<br>(Merged to `main`) |
 | **[#4](https://github.com/navraj-singh-dev/sentinelforge/pull/4)** | `feat/integration-and-docs` | Root Documentation & Qodo Code Review Evidence | 1. Node.js prerequisite version mismatch (`>=20.0.0` vs `>=22.14.0`) | Fixed in [`592a169`](https://github.com/navraj-singh-dev/sentinelforge/commit/592a169). Aligned README Node.js engine requirement to `>=22.14.0` per package manifest. | `✓ Resolved`<br>(Merged to `main`) |
+| **[#5](https://github.com/navraj-singh-dev/sentinelforge/pull/5)** | `docs/enrich-architecture-spec` | Architecture Specification & Sequence Flows | 1. Subagent execution state diagram and sequence flows<br>2. Updated Qodo PR audit trail | Merged in [`d85005f`](https://github.com/navraj-singh-dev/sentinelforge/commit/d85005f). Enriched architecture specification with deep module invariants, error recovery, and end-to-end multi-agent orchestration diagrams. | `✓ Resolved`<br>(Merged to `main`) |
+| **[#6](https://github.com/navraj-singh-dev/sentinelforge/pull/6)** | `feat/mcp-sse-transport-and-cloud-sandbox` | SSE HTTP Transport & TrueForge Cloud Sandbox Integration | 1. Concurrent sessions overwriting transport<br>2. Telemetry endpoint access control & host binding<br>3. Stdio transport import side-effect in index.ts | Fixed in [`776847a`](https://github.com/navraj-singh-dev/sentinelforge/commit/776847a). Implemented `activeTransports` session registry Map, restricted host binding to `127.0.0.1` with CORS allowlist, isolated direct execution check, and added `test-sse.ts` automated test suite. | `✓ Resolved`<br>(PR #6 Ready to Merge) |
 
 ---
 

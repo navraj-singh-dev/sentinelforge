@@ -66,10 +66,12 @@ SentinelForge is an autonomous Incident Response and Remediation Agent engineere
    * Correlates error signatures with code diffs to isolate the faulty configuration change in `payment_service.py`.
 
 ### C. Model Context Protocol (MCP) Server (`mcp-servers/telemetry-mcp`)
-Exposes three standardized SRE tools via stdio transport:
+Exposes three standardized SRE tools via dual transports (Stdio & Remote SSE HTTP):
 * `get_active_alerts`: Ingests active P1/P2 production alerts with metric metadata and deployment commit context.
 * `fetch_service_logs`: Streams structured JSON log records with dynamically scaled timestamps spanning the lookback window.
 * `get_metric_timeseries`: Returns timeseries data points demonstrating error rate and p99 latency degradation aligned to absolute deployment epoch timestamps.
+* **Dual Transport Architecture:** Supports both Stdio transport (`npm start`) for local CLI environments and Server-Sent Events (SSE) HTTP transport (`npm run start:sse` on `http://127.0.0.1:8080/sse`) for TrueForge remote agent harness integration.
+* **Multi-Client Concurrency & Security:** Manages isolated client sessions via an `activeTransports` Map, enforces loopback binding (`127.0.0.1`), validates CORS allowlists, and supports bearer token authentication.
 * **Dual Telemetry Provider Architecture:** Implements `ITelemetryProvider` interface supporting live `HttpTelemetryProvider` backends and deterministic `FileFixtureTelemetryProvider` modes.
 
 ### D. Custom Agent Skills & Playbooks (`skills/` and `.agents/skills/`)
